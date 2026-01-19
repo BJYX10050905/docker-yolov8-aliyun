@@ -1,0 +1,39 @@
+name: Sync YOLOv8 to GHCR
+
+on:
+  workflow_dispatch: # 允许你手动点击按钮运行
+
+jobs:
+  sync-job:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # 必须开启此权限才能推送镜像
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync Image
+        run: |
+          # 1. 定义镜像变量（注意：已将中文冒号改为英文冒号）
+          SOURCE_IMAGE="hanqingdocker/yolov8:v1"
+          
+          # 2. 转换用户名为小写以符合 GHCR 规范
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          TARGET_IMAGE="ghcr.io/$OWNER_LOWER/yolov8:v1"
+          
+          echo "正在从 Docker Hub 拉取: $SOURCE_IMAGE"
+          docker pull $SOURCE_IMAGE
+          
+          echo "正在打标签为: $TARGET_IMAGE"
+          docker tag $SOURCE_IMAGE $TARGET_IMAGE
+          
+          echo "正在推送到 GitHub GHCR..."
+          docker push $TARGET_IMAGE
+          
+          echo "同步成功！镜像地址为: $TARGET_IMAGE"
