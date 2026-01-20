@@ -1,51 +1,52 @@
-name: Sync YOLOv8 to Aliyun and GHCR
+name: Sync Image to Aliyun
 
 on:
-  workflow_dispatch: # 手动触发按钮
+  workflow_dispatch: # 手动触发执行
+    inputs:
+      source_image:
+        description: 'Docker Hub hanqingdocker/yolov8:v1'
+        required: true
+        default: 'nginx:latest'
+      target_tag:
+        description: 'yolov8-aliyun:v1'
+        required: true
 
 jobs:
-  sync-job:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
-      - name: Log in to GHCR
+      # 1. 登录到 GitHub Container Registry (可选，如果你想存一份在 GitHub)
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Alibaba Cloud ACR
+      # 2. 登录到 阿里云 ACR
+      - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
-          # 使用你提供的成都个人版镜像仓库地址
-          registry: crpi-gub8j4sqs24nam8o.cn-chengdu.personal.cr.aliyuncs.com
-          username: hanqingdocker
-          password: ${{ secrets.ALIBABA_PASSWORD }} # 调用你刚才设置的保险箱密码
+          registry: crpi-gub8j4sqs24nam8o.cn-chengdu.personal.cr.aliyuncs.com # 替换为你的 ACR 地址，或直接写死
+          username: ${{ secrets.ALICE_USERNAME }}
+          password: ${{ secrets.ALICE_PASSWORD }}
 
-      - name: Sync and Push
+      # 3. 从 Docker Hub 拉取镜像
+      - name: Pull from Docker Hub
+        run: docker pull ${{ github.event.inputs.source_image }}
+
+      # 4. 打标签并推送到 GitHub (GHCR)
+      - name: Tag and Push to GHCR
         run: |
-          SOURCE_IMAGE="hanqingdocker/yolov8:v1"
-          
-          # 1. 准备 GitHub 镜像地址
-          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          GHCR_IMAGE="ghcr.io/$OWNER_LOWER/yolov8:v1"
-          
-          # 2. 准备 阿里云镜像地址 (假设你的命名空间是 hanqing-research)
-          ALIYUN_IMAGE="crpi-gub8j4sqs24nam8o.cn-chengdu.personal.cr.aliyuncs.com/hanqing-docker-aliyu/yolov8-aliyun:v1"
-          
-          echo "正在从 Docker Hub 下载..."
-          docker pull $SOURCE_IMAGE
-          
-          echo "正在同步到 GitHub (GHCR)..."
-          docker tag $SOURCE_IMAGE $GHCR_IMAGE
-          docker push $GHCR_IMAGE
-          
-          echo "正在同步到 阿里云 (成都节点)..."
-          docker tag $SOURCE_IMAGE $ALIYUN_IMAGE
-          docker push $ALIYUN_IMAGE
-          
-          echo "全部同步完成！"
+          IMAGE_NAME=$(echo "${{ github.event.inputs.source_image }}" | cut -d/ -f2)
+          docker tag ${{ github.event.inputs.source_image }} ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
+          docker push ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
+
+      # 5. 打标签并推送到 阿里云 ACR
+      - name: Tag and Push to Aliyun
+        run: |
+          # 请将下面的地址替换为你自己的阿里云 Registry 地址和命名空间
+          REGISTRY=crpi-gub8j4sqs24nam8o.cn-chengdu.personal.cr.aliyuncs.com
+          NAMESPACE=hanqing-docker-aliyu
+          docker tag ${{ github.event.inputs.source_image }} $REGISTRY/$NAMESPACE/${{ github.event.inputs.target_tag }}
+          docker push $REGISTRY/$NAMESPACE/${{ github.event.inputs.target_tag }}
