@@ -33,7 +33,7 @@ jobs:
       - name: Tag and Push to Aliyun
         run: |
           REGISTRY="crpi-gub8j4sqs24nam8o.cn-chengdu.personal.cr.aliyuncs.com"
-          NAMESPACE="hanqingdocker"
+          NAMESPACE="hanqing-docker-aliyu"
           
           TARGET="$REGISTRY/$NAMESPACE/${{ github.event.inputs.target_tag }}"
           
