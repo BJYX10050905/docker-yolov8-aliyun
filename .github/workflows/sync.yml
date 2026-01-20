@@ -22,8 +22,8 @@ jobs:
         with:
           # 使用你提供的成都节点地址
           registry: crpi-gub8j4sqs24nam8o.cn-chengdu.personal.cr.aliyuncs.com
-          username: ${{ secrets.ALICE_USERNAME }}
-          password: ${{ secrets.ALICE_PASSWORD }}
+          username: hanqingdocker
+          password: hanqing123.
 
       # 2. 从 Docker Hub 拉取镜像
       - name: Pull from Docker Hub
