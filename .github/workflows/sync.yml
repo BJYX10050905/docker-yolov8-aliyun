@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       source_image:
-        description: 'Docker Hub 源镜像名称'
+        description: 'Docker Hub 源镜像'
         required: true
-        default: 'hanqingdocker/yolov8:v1' # 默认填入你常用的 YOLOv8 镜像
+        default: 'hanqingdocker/yolov8:v1' # 这里是默认值，会自动出现在框里
       target_tag:
-        description: '阿里云镜像标签名 (例如: yolov8:v1)'
+        description: '阿里云镜像标签名'
         required: true
         default: 'yolov8-aliyun:v1'
 
@@ -16,44 +16,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. 登录 GitHub 容器镜像服务 (GHCR)
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # 2. 登录阿里云容器镜像服务 (ACR)
+      # 1. 登录阿里云容器镜像服务
       - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
+          # 使用你提供的成都节点地址
           registry: crpi-gub8j4sqs24nam8o.cn-chengdu.personal.cr.aliyuncs.com
           username: ${{ secrets.ALICE_USERNAME }}
           password: ${{ secrets.ALICE_PASSWORD }}
 
-      # 3. 从 Docker Hub 拉取镜像
+      # 2. 从 Docker Hub 拉取镜像
       - name: Pull from Docker Hub
         run: docker pull ${{ github.event.inputs.source_image }}
 
-      # 4. 打标签并推送到 GitHub (中转站)
-      - name: Tag and Push to GHCR
-        run: |
-          # 提取镜像名称
-          IMAGE_NAME=$(echo "${{ github.event.inputs.source_image }}" | awk -F'/' '{print $NF}' | cut -d':' -f1)
-          GHCR_TARGET="ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest"
-          
-          docker tag ${{ github.event.inputs.source_image }} $GHCR_TARGET
-          docker push $GHCR_TARGET
-
-      # 5. 打标签并推送到阿里云
+      # 3. 打标签并推送
       - name: Tag and Push to Aliyun
         run: |
-          # 使用你提供的阿里云地址和命名空间
           REGISTRY="crpi-gub8j4sqs24nam8o.cn-chengdu.personal.cr.aliyuncs.com"
           NAMESPACE="hanqingdocker"
           
-          ALIYUN_TARGET="$REGISTRY/$NAMESPACE/${{ github.event.inputs.target_tag }}"
+          TARGET="$REGISTRY/$NAMESPACE/${{ github.event.inputs.target_tag }}"
           
-          docker tag ${{ github.event.inputs.source_image }} $ALIYUN_TARGET
-          docker push $ALIYUN_TARGET
+          docker tag ${{ github.event.inputs.source_image }} $TARGET
+          docker push $TARGET
